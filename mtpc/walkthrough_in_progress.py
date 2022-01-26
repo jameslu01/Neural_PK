@@ -18,7 +18,7 @@ import pandas as pd
 from data_split import data_split, augment_data
 
 
-BASE_RANDOM_EED = 1329
+BASE_RANDOM_SEED = 1329
 SPLIT_FRAC = 0.2
 """
 Example data has the following columns:
@@ -76,8 +76,8 @@ for fold in [1, 2, 3, 4, 5]:
     for model in [1, 2, 3, 4, 5]:
 
         # first we split up the data into training/validation/test
-        train, test = data_split(data, "PTNM", seed=BASE_RANDOM_EED + fold, test_size=SPLIT_FRAC)
-        train, validate = data_split(train, "PTNM", seed=BASE_RANDOM_EED + fold + model, test_size=SPLIT_FRAC)
+        train, test = data_split(data, "PTNM", seed=BASE_RANDOM_SEED + fold, test_size=SPLIT_FRAC)
+        train, validate = data_split(train, "PTNM", seed=BASE_RANDOM_SEED + fold + model, test_size=SPLIT_FRAC)
 
         """
         Adding the first cycle of treatment of the test set to the training set, as it will later be used
@@ -95,6 +95,7 @@ for fold in [1, 2, 3, 4, 5]:
             [test[(test.DSFQ == 1) & (test.TIME < 168)], test[(test.DSFQ == 3) & (test.TIME < 504)]], ignore_index=True
         )
         train = pd.concat([train, test_add_to_train], ignore_index=True)
+        # i am not sure it makes sense to add this to the validation data?
         validate = pd.concat([validate, test_add_to_train], ignore_index=True)
 
         """
