@@ -50,7 +50,7 @@ def train_neural_ode(
     best_rmse = 0x7FFFFFFF
     best_epochs = 0
 
-    for epoch in range(1, epochs):
+    for epoch in range(1, epochs + 1):
 
         for _ in tqdm(range(batches_per_epoch), ascii=True):
             optimizer.zero_grad()
