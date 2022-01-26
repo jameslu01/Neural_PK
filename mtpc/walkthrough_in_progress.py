@@ -97,7 +97,16 @@ for fold in [1, 2, 3, 4, 5]:
         train = pd.concat([train, test_add_to_train], ignore_index=True)
         validate = pd.concat([validate, test_add_to_train], ignore_index=True)
 
-        # James' augmentation
+        """
+        They add extra data to the training set made out of existing training data. 
+        Here is a description from the paper:
+
+        "We applied augmentation to prevent overfitting.
+        We applied timewise truncation to increase the number of training examples.
+        For each training example, in addition to the original example, we also truncated
+        the examples at 1008 hr, 1512 hr, and 2016 hr and generated and added
+        a set of new examples to the training examples."
+        """
         train = augment_data(train)
 
         # CUDA_VISIBLE_DEVICES="" python run_train.py --fold $fold --model $model --save fold_$fold --lr 0.00005 --tol 1e-4 --epochs 30 --l2 0.1

@@ -13,7 +13,8 @@ def data_split(df, on_col, seed=2020, test_size=0.2):
 
 def augment_data(train):
     """
-    They add extra data to the training set. Here is a description from the paper:
+    They add extra data to the training set made out of existing training data.
+    Here is a description from the paper:
 
     "We applied augmentation to prevent overfitting.
     We applied timewise truncation to increase the number of training examples.
