@@ -40,7 +40,7 @@ def train_neural_ode(
     # make the logs
     log_path = "logs/" + f"fold_{fold}_model_{model}.log"
     utils.makedirs("logs/")
-    logger = utils.get_logger(logpath=log_path, filepath=os.path.abspath(__file__))
+    logger = utils.get_logger(logpath=log_path)
     logger.info(input_cmd)
 
     batches_per_epoch = tdm1_obj["n_train_batches"]

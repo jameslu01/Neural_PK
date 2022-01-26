@@ -45,7 +45,7 @@ class TDM1(Dataset):
         else:
             cmax_time_full[:] = cmax_time[:20]
 
-        data["PK_round1"] = data["PK_round1"] / cmax
+        data.loc[:, "PK_round1"] = data["PK_round1"] / cmax
 
         features = data[self.features].values
         labels = data[self.label_col].values

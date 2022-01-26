@@ -39,7 +39,7 @@ def load_model(ckpt_path, encoder=None, ode_func=None, classifier=None, device="
         classifier.to(device)
 
 
-def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+def get_logger(logpath, displaying=True, saving=True, debug=False):
     logger = logging.getLogger()
     if debug:
         level = logging.DEBUG
@@ -54,7 +54,6 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
         console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
         logger.addHandler(console_handler)
-    logger.info(filepath)
 
     return logger
 
