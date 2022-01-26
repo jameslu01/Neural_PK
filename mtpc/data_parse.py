@@ -2,12 +2,11 @@ import utils
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-import pandas as pd
 
 
 class TDM1(Dataset):
-    def __init__(self, data_to_load, label_col, feature_cols, device, phase="train"):
-        self.data = pd.read_csv(data_to_load)
+    def __init__(self, data, label_col, feature_cols, device, phase="train"):
+        self.data = data
 
         self.label_col = label_col
         self.features = feature_cols
@@ -93,27 +92,15 @@ def tdm1_collate_fn(batch, device):
     return ptnms, combined_tt, combined_features, combined_label, combined_cmax_time
 
 
-def parse_tdm1(device, phase="train"):
-    train_data_path = "train.csv"
-    val_data_path = "validate.csv"
-    test_data_path = "test.csv"
-
+def parse_tdm1(device, train, validate, test, phase="train"):
     feature_cols = ["TFDS", "TIME", "CYCL", "AMT", "PK_round1"]
-    """
-    covariates = ['SEX','AGE','WT','RACR','RACE','BSA',
-                  'BMI','ALBU','TPRO','WBC','CRCL','CRET',
-                  'SGOT','SGPT','TBIL','TMBD','ALKP', 'HER', 
-                  'ECOG','KEOALL','ASIAN']
-    feature_cols += covariates
-    """
     label_col = "PK_timeCourse"
-    train = TDM1(train_data_path, label_col, feature_cols, device, phase="train")
-    validate = TDM1(val_data_path, label_col, feature_cols, device, phase="validate")
-    test = TDM1(test_data_path, label_col, feature_cols, device, phase="test")
+    train = TDM1(train, label_col, feature_cols, device, phase="train")
+    validate = TDM1(validate, label_col, feature_cols, device, phase="validate")
+    test = TDM1(test, label_col, feature_cols, device, phase="test")
 
     ptnm, times, features, labels, cmax_time = train[0]
     input_dim = features.size(-1)
-    # n_labels = 1
 
     if phase == "train":
         train_dataloader = DataLoader(
@@ -143,15 +130,3 @@ def parse_tdm1(device, phase="train"):
         }
 
     return dataset_objs
-
-
-if __name__ == "__main__":
-    print("run")
-    data = parse_tdm1("cpu")
-    for ptnms, times, features, labels, cmax_time in data["train_dataloader"]:
-        print(ptnms)
-        print(times)
-        print(features)
-        print(labels)
-        print(cmax_time)
-        break

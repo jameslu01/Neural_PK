@@ -1,8 +1,5 @@
 import torch
 import torch.nn as nn
-from args import args
-
-# from torch.nn.modules.rnn import GRU, LSTM, RNN
 import utils
 
 
