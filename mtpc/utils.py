@@ -39,7 +39,7 @@ def load_model(ckpt_path, encoder=None, ode_func=None, classifier=None, device="
         classifier.to(device)
 
 
-def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+def get_logger(logpath, displaying=True, saving=True, debug=False):
     logger = logging.getLogger()
     if debug:
         level = logging.DEBUG
@@ -54,7 +54,6 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
         console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
         logger.addHandler(console_handler)
-    logger.info(filepath)
 
     return logger
 
@@ -101,7 +100,7 @@ def compute_loss_on_train(criterion, labels, preds):
     return torch.sqrt(criterion(preds, labels))
 
 
-def compute_loss_on_test(encoder, ode_func, classifier, args, dataloader, n_batches, device, phase):
+def compute_loss_on_test(encoder, ode_func, classifier, tol, dataloader, n_batches, device, phase):
     ptnms = []
     Times = torch.Tensor([]).to(device=device)
     predictions = torch.Tensor([]).to(device=device)
@@ -123,7 +122,7 @@ def compute_loss_on_test(encoder, ode_func, classifier, args, dataloader, n_batc
             for idx, (time0, time1) in enumerate(zip(times[:-1], times[1:])):
                 z0 += dosing[idx]
                 time_interval = torch.Tensor([time0 - time0, time1 - time0])
-                sol = odeint(ode_func, z0, time_interval, rtol=args.tol, atol=args.tol)
+                sol = odeint(ode_func, z0, time_interval, rtol=tol, atol=tol)
                 z0 = sol[-1].clone()
                 solves = torch.cat([solves, sol[-1:, :]], 0)
         except AssertionError:
