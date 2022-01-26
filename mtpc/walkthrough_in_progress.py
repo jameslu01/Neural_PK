@@ -1,7 +1,35 @@
-## not for running, just for showing how to get the data from the original
-## start from TDM1_LiverToxData_corrected_17Feb2020.csv
+"""
+Here is run.sh, that we will reproduce here
+```
+python process_data.py
+for fold in 1 2 3 4 5; do
+    for model in 1 2 3 4 5; do
+        python data_split.py --data data.csv --fold $fold --model $model
+
+        CUDA_VISIBLE_DEVICES="" python run_train.py --fold $fold --model $model --save fold_$fold --lr 0.00005 --tol 1e-4 --epochs 30 --l2 0.1
+        CUDA_VISIBLE_DEVICES="" python run_predict.py --fold $fold --model $model --save fold_$fold --tol 1e-4
+    done
+done    
+```
+Note: evaluation.py is never called in run.sh but we will add it in properly.
+"""
 
 import pandas as pd
+
+
+"""
+Example data has the following columns:
+  - STUD - Study ID. Can be 1000, 2000, 3000.
+  - PTNM - Patient number. Can be repeated between studies, but for example patient 1 in Study 1000 is not the same person as patient 1 in study 2000.
+  - DSFQ - Dosage frequency is how often the dose is administred. Only 1 or 3.
+  - AMT - Dosage amount. Can be 0 when measurements taken between doses.
+  - TIME - Time since beginning of patient's treatment.
+  - TFDS - Time since dose.
+  - DV - Concentration measurement. 
+  
+# TODO: comment the code below
+"""
+
 
 data_complete = pd.read_csv("../../ExampleData/sim_data.csv", na_values=".")
 

@@ -1,9 +1,7 @@
-
 import os
 import sys
 import numpy as np
 import pandas as pd
-from random import SystemRandom
 from tqdm import tqdm
 
 import torch
@@ -53,11 +51,9 @@ logger.info(input_cmd)
 
 batches_per_epoch = tdm1_obj["n_train_batches"]
 criterion = nn.MSELoss().to(device=device)
-params = (list(encoder.parameters()) + 
-          list(ode_func.parameters()) + 
-          list(classifier.parameters()))
+params = list(encoder.parameters()) + list(ode_func.parameters()) + list(classifier.parameters())
 optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.l2)
-best_rmse = 0x7fffffff
+best_rmse = 0x7FFFFFFF
 best_epochs = 0
 
 for epoch in range(1, args.epochs):
@@ -73,7 +69,7 @@ for epoch in range(1, args.epochs):
         encoder_out = encoder(features)
         qz0_mean, qz0_var = encoder_out[:, :latent_dim], encoder_out[:, latent_dim:]
         z0 = utils.sample_standard_gaussian(qz0_mean, qz0_var)
-        
+
         solves = z0.unsqueeze(0).clone()
         try:
             for idx, (time0, time1) in enumerate(zip(times[:-1], times[1:])):
@@ -86,18 +82,18 @@ for epoch in range(1, args.epochs):
             print(times)
             print(time0, time1, time_interval, ptnms)
             continue
-    
+
         preds = classifier(solves, cmax_time)
 
         loss = utils.compute_loss_on_train(criterion, labels, preds)
-        try: 
+        try:
             loss.backward()
         except RuntimeError:
             print(ptnms)
             print(times)
             continue
         optimizer.step()
-    
+
     idx_not_nan = ~(torch.isnan(labels) | (labels == -1))
     preds = preds.permute(1, 0, 2)[idx_not_nan]
     labels = labels[idx_not_nan]
@@ -105,31 +101,48 @@ for epoch in range(1, args.epochs):
     print(labels)
 
     with torch.no_grad():
-        
-        train_res = utils.compute_loss_on_test(encoder, ode_func, classifier, args,
-            tdm1_obj["train_dataloader"], tdm1_obj["n_train_batches"], 
-            device, phase="train")
 
-        validation_res = utils.compute_loss_on_test(encoder, ode_func, classifier, args,
-            tdm1_obj["val_dataloader"], tdm1_obj["n_val_batches"], 
-            device, phase="validate")
-        
-        train_loss = train_res["loss"] 
+        train_res = utils.compute_loss_on_test(
+            encoder,
+            ode_func,
+            classifier,
+            args,
+            tdm1_obj["train_dataloader"],
+            tdm1_obj["n_train_batches"],
+            device,
+            phase="train",
+        )
+
+        validation_res = utils.compute_loss_on_test(
+            encoder,
+            ode_func,
+            classifier,
+            args,
+            tdm1_obj["val_dataloader"],
+            tdm1_obj["n_val_batches"],
+            device,
+            phase="validate",
+        )
+
+        train_loss = train_res["loss"]
         validation_loss = validation_res["loss"]
         if validation_loss < best_rmse:
-            torch.save({'encoder': encoder.state_dict(),
-                        'ode': ode_func.state_dict(),
-                        'classifier': classifier.state_dict(),
-                        'args': args}, ckpt_path)
+            torch.save(
+                {
+                    "encoder": encoder.state_dict(),
+                    "ode": ode_func.state_dict(),
+                    "classifier": classifier.state_dict(),
+                    "args": args,
+                },
+                ckpt_path,
+            )
             best_rmse = validation_loss
             best_epochs = epoch
 
         message = """
         Epoch {:04d} | Training loss {:.6f} | Training R2 {:.6f} | Validation loss {:.6f} | Validation R2 {:.6f}
         Best loss {:.6f} | Best epoch {:04d}
-        """.format(epoch, train_loss, train_res["r2"], validation_loss, validation_res["r2"], best_rmse, best_epochs)
+        """.format(
+            epoch, train_loss, train_res["r2"], validation_loss, validation_res["r2"], best_rmse, best_epochs
+        )
         logger.info(message)
-        
-            
-
-

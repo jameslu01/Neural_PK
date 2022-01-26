@@ -1,13 +1,12 @@
-
 import torch
 import torch.nn as nn
 from args import args
+
 # from torch.nn.modules.rnn import GRU, LSTM, RNN
 import utils
 
 
 class ODEFunc(nn.Module):
-
     def __init__(self, input_dim, hidden_dim):
         super(ODEFunc, self).__init__()
 
@@ -18,7 +17,7 @@ class ODEFunc(nn.Module):
             nn.SELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.SELU(),
-            nn.Linear(hidden_dim, input_dim)
+            nn.Linear(hidden_dim, input_dim),
         )
 
         for m in self.net.modules():
@@ -32,7 +31,6 @@ class ODEFunc(nn.Module):
 
 
 class Encoder(nn.Module):
-
     def __init__(self, input_dim, output_dim, hidden_dim, device=torch.device("cpu")):
         super(Encoder, self).__init__()
 
@@ -55,15 +53,14 @@ class Encoder(nn.Module):
         data = data.permute(1, 0, 2)
         data = utils.reverse(data)
         output_rnn, _ = self.rnn(data)
-        #print(output_rnn)
+        # print(output_rnn)
         outputs = self.hiddens_to_output(output_rnn[-1])
-        #print(outputs)
-        
+        # print(outputs)
+
         return outputs
 
 
 class Classifier(nn.Module):
-
     def __init__(self, latent_dim, output_dim):
         super(Classifier, self).__init__()
         self.net = nn.Sequential(
@@ -71,7 +68,7 @@ class Classifier(nn.Module):
             nn.SELU(),
             nn.Linear(32, output_dim),
         )
-        
+
         utils.init_network_weights(self.net, std=0.001)
 
     def forward(self, z, cmax_time):

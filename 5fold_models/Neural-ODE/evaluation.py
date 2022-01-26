@@ -1,4 +1,3 @@
-
 import pandas as pd
 from sklearn.metrics import r2_score, mean_squared_error
 from scipy.stats import pearsonr
@@ -13,10 +12,10 @@ def score(df, label_col, pred_col, score_fn):
         return score_fn(y_true, y_pred)[0]
     else:
         return score_fn(y_true, y_pred)
-    
+
 
 def merge_predictions(files, method="mean"):
-    cols = ['PTNM','TIME','preds']
+    cols = ["PTNM", "TIME", "preds"]
     left = pd.read_csv(files[0])
     for f in files[1:]:
         right = pd.read_csv(f)
@@ -24,7 +23,7 @@ def merge_predictions(files, method="mean"):
     preds = [col for col in left.columns.values if col.startswith("preds")]
     left["pred_agg"] = left[preds].agg(method, axis=1)
 
-    ref = pd.read_csv("data.csv")[["PTNM", "DSFQ"]].drop_duplicates() 
+    ref = pd.read_csv("data.csv")[["PTNM", "DSFQ"]].drop_duplicates()
     # print(ref)
     left = left.merge(ref, on=["PTNM"], how="left")
     print(left.shape)
@@ -51,7 +50,7 @@ def main(score_type, score_fn, args):
         for f in in_file:
             predictions = merge_predictions([f])
             write_score(predictions, fold, f.split("/")[1][7:], records, score_fn)
-    
+
     df = pd.DataFrame(records)
     print(df)
     summary_df = df.drop(columns="fold").agg(["min", "max", "mean", "median"])
@@ -62,6 +61,7 @@ def main(score_type, score_fn, args):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--folds", type=int, nargs="+", required=True)
     parser.add_argument("--models", type=int, nargs="+", required=True)
