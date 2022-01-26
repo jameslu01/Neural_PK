@@ -1,0 +1,2 @@
+- `pytorch 1.5.1` doesn't seem to exist anymore. You can `conda install pytorch==1.5 torchdiffeq` sucessfully. 
+- For now, just using CPU but will need to figure out GPU stuff at the end.
