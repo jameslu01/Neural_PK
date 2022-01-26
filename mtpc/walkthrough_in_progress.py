@@ -33,8 +33,6 @@ HIDDEN_DIM = 128
 LATEN_DIM = 6
 HIDDEN_DIM = 128
 ODE_HIDDEN_DIM = 16
-LATENT_DIM = 6
-
 
 """
 Example data has the following columns:
