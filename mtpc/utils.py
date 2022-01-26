@@ -55,15 +55,6 @@ def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True
         console_handler.setLevel(level)
         logger.addHandler(console_handler)
     logger.info(filepath)
-    """
-    with open(filepath, "r") as f:
-        logger.info(f.read())
-
-    for f in package_files:
-        logger.info(f)
-        with open(f, "r") as package_f:
-            logger.info(package_f.read())
-    """
 
     return logger
 
@@ -179,6 +170,7 @@ def compute_loss_on_test(encoder, ode_func, classifier, args, dataloader, n_batc
             "labels": ground_truth.cpu().tolist(),
             "preds": predictions.cpu().tolist(),
             "loss": rmse_loss,
+            "r2": r2,
         }
     else:
         return {"labels": ground_truth.cpu().tolist(), "preds": predictions.cpu().tolist(), "loss": rmse_loss, "r2": r2}
@@ -240,4 +232,5 @@ def compute_loss_on_interp(encoder, ode_func, classifier, args, dataloader, data
         "labels": ground_truth.cpu().tolist(),
         "preds": predictions.cpu().tolist(),
         "loss": rmse_loss,
+        "r2": r2,
     }

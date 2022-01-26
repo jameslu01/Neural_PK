@@ -17,9 +17,23 @@ Note: evaluation.py is never called in run.sh but we will add it in properly.
 import pandas as pd
 from data_split import data_split, augment_data
 
-
+# general hyperparameters
 BASE_RANDOM_SEED = 1329
+TORCH_RANDOM_SEED = 1000  # they have different random seeds for splitting and for the neural network
 SPLIT_FRAC = 0.2
+
+# hyperparemeters for the model
+# TODO: describe what each one does
+# NOTE: the authors don't discuss how they chose these hyperparameters
+LR = 0.00005
+TOL = 1e-4
+EPOCHS = 30
+L2 = 0.1
+HIDDEN_DIM = 128
+LATEN_DIM = 6
+HIDDEN_DIM = 128
+ODE_HIDDEN_DIM = 16
+
 """
 Example data has the following columns:
   - STUD - Study ID. Can be 1000, 2000, 3000.
@@ -133,3 +147,41 @@ for fold in [1, 2, 3, 4, 5]:
 
         # CUDA_VISIBLE_DEVICES="" python run_train.py --fold $fold --model $model --save fold_$fold --lr 0.00005 --tol 1e-4 --epochs 30 --l2 0.1
         # CUDA_VISIBLE_DEVICES="" python run_predict.py --fold $fold --model $model --save fold_$fold --tol 1e-4
+
+        # TODO(sergey): finish this part up properly
+        import os
+        import sys
+        import numpy as np
+        import pandas as pd
+        from tqdm import tqdm
+
+        import torch
+        import torch.nn as nn
+        import torch.optim as optim
+        from torchdiffeq import odeint_adjoint as odeint
+
+        import utils
+        from model import Encoder, ODEFunc, Classifier
+        from data_parse import parse_tdm1
+
+        # choose whether to use a GPU if it is available
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        # set various seeds for complete reproducibility
+        torch.manual_seed(TORCH_RANDOM_SEED + model + fold)
+        np.random.seed(TORCH_RANDOM_SEED + model + fold)
+
+        # the model checkpoints will be stored in this directory
+        utils.makedirs(f"fold_{fold}")
+        ckpt_path = os.path.join(f"fold_{fold}", f"fold_{fold}_model_{model}.ckpt")
+
+        # for the logging we'll have this informative string
+        input_cmd = f"--fold {fold} --model {model} --lr {LR} --tol {TOL} --epochs {EPOCHS} --l2 {L2} --hidden_dim {HIDDEN_DIM} --laten_dim {LATEN_DIM}"
+
+        tdm1_obj = parse_tdm1(device, train, validate, test, phase="train")
+        input_dim = tdm1_obj["input_dim"]
+
+        # put the model together
+        encoder = Encoder(input_dim=input_dim, output_dim=2 * LATENT_DIM, hidden_dim=HIDDEN_DIM)
+        ode_func = ODEFunc(input_dim=LATENT_DIM, hidden_dim=ODE_HIDDEN_DIM)
+        classifier = Classifier(latent_dim=LATENT_DIM, output_dim=1)
