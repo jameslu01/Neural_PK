@@ -31,7 +31,7 @@ Example data has the following columns:
 """
 
 
-data_complete = pd.read_csv("../../ExampleData/sim_data.csv", na_values=".")
+data_complete = pd.read_csv("ExampleData/sim_data.csv", na_values=".")
 
 select_cols = ["STUD", "DSFQ", "PTNM", "CYCL", "AMT", "TIME", "TFDS", "DV"]
 if "C" in data_complete.columns.values:
