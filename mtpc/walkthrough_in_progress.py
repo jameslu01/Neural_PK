@@ -163,4 +163,12 @@ for fold in [1, 2, 3, 4, 5]:
             LATENT_DIM,
             ODE_HIDDEN_DIM,
         )
+
+        # TODO(anyone):
+        # implement the next command:
         # CUDA_VISIBLE_DEVICES="" python run_predict.py --fold $fold --model $model --save fold_$fold --tol 1e-4
+        # implement the evaluation from evaluation.py
+        # go through and see which utils are never used and delete them
+        # add a lot of documentation everywhere
+        # convert to jupyter notebook
+        # go back through emails and make sure we've answered all questions
