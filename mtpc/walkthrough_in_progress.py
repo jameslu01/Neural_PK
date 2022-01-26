@@ -55,23 +55,26 @@ selected_ptnms = time_summary[time_summary.TIME > 0].ID
 data_complete = data_complete[data_complete.ID.isin(selected_ptnms)]
 
 data_complete["AMT"] = data_complete["AMT"].fillna(0)  # replace missing values for dosage with 0s
-# Set up round 1 measurement features. round 1 for each ID is used as intput for prediction of measurements that occur after round 1.
-# For weekly dosage IDs, cut off after end of week 1 (TIME == 168), for every 3 week dosage IDs, cut off after end of week 3 (TIME == 604)
+
+# Set up round 1 measurement features.
+# Round 1 measurements for each ID are always used as input features for the neural network to predict measurements after round 1.
+# For weekly dosage IDs, round 1 is anything before end of week 1 (TIME <= 168), for every 3 week dosage IDs, anything before end of week 3 (TIME <= 604)
 data_complete["PK_round1"] = data_complete["PK_timeCourse"]
 data_complete.loc[(data_complete.DSFQ == 1) & (data_complete.TIME >= 168), "PK_round1"] = 0
 data_complete.loc[(data_complete.DSFQ == 3) & (data_complete.TIME >= 504), "PK_round1"] = 0
 
 # Missing PK measurement value handling
-# TODO: Check with authors why they chose to fill these values differently
 data_complete["PK_round1"] = data_complete["PK_round1"].fillna(0)  # round 1 missing values filled with 0
-data_complete["PK_timeCourse"] = data_complete["PK_timeCourse"].fillna(-1)  # all others filled with -1
+data_complete["PK_timeCourse"] = data_complete["PK_timeCourse"].fillna(
+    -1
+)  # all others filled with -1, used to find missing values during training
 
 data_complete = data_complete[
     ~((data_complete.AMT == 0) & (data_complete.TIME == 0))
 ]  # drop all first patient rows with no dosage
 
-# some rows are duplicate pairs for PTNM and TIME combinations
-# set the first dosage amount of duplicated rows to the last dosage amount and keep only first row of duplicated rows
+# Some rows are duplicate pairs for PTNM and TIME combinations
+# Set the first dosage amount of duplicated rows to the last dosage amount and keep only first row of duplicated rows
 # This implementation may be an issue if patient number (PTNM) repeats across multiple studies (STUD)
 data_complete.loc[
     data_complete[["PTNM", "TIME"]].duplicated(keep="last"), "AMT"  # all non-last duplicated rows
