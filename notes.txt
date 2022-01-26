@@ -4,7 +4,7 @@ conda config --add channels conda-forge
 conda config --set channel_priority strict
 conda create --name neuralpk python=3.7.5
 conda activate neuralpk
-conda install pytorch==1.5 scipy==1.7.3 torchdiffeq==0.2.2 pandas==1.3.5 scikit-learn==1.0.2 jupyterlab
+conda install pytorch==1.5 scipy==1.7.3 torchdiffeq==0.2.2 pandas==1.3.5 scikit-learn==1.0.2 jupyterlab tqdm
 ``` 
 - For now, just using CPU but will need to figure out GPU stuff at the end.
 - Data has the following columns:
@@ -15,3 +15,5 @@ conda install pytorch==1.5 scipy==1.7.3 torchdiffeq==0.2.2 pandas==1.3.5 scikit-
   - TIME - Time since beginning of patient's treatment.
   - TFDS - Time since dose.
   - DV - Concentration measurement. 
+
+- We fixed a bunch of bugs when adapting this code...
