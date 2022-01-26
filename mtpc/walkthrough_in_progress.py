@@ -30,7 +30,6 @@ Example data has the following columns:
   - TFDS - Time since dose.
   - DV - Concentration measurement. 
   
-# TODO: comment the code below
 """
 data_complete = pd.read_csv("ExampleData/sim_data.csv", na_values=".")
 
@@ -74,8 +73,8 @@ data_complete = data_complete[
     ~((data_complete.AMT == 0) & (data_complete.TIME == 0))
 ]  # drop all first patient rows with no dosage
 
-# Some rows are duplicate pairs for PTNM and TIME combinations
-# Set the first dosage amount of duplicated rows to the last dosage amount and keep only first row of duplicated rows
+# Some rows are duplicate pairs for PTNM and TIME combinations with different cycle (CYCL) values
+# Set the first dosage amount of duplicated rows to the last dosage amount and keep only last row of duplicated rows
 # This implementation may be an issue if patient number (PTNM) repeats across multiple studies (STUD)
 data_complete.loc[
     data_complete[["PTNM", "TIME"]].duplicated(keep="last"), "AMT"  # all non-last duplicated rows
