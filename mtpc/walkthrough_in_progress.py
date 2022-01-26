@@ -32,33 +32,55 @@ Example data has the following columns:
   
 # TODO: comment the code below
 """
-
-
 data_complete = pd.read_csv("ExampleData/sim_data.csv", na_values=".")
 
 select_cols = ["STUD", "DSFQ", "PTNM", "CYCL", "AMT", "TIME", "TFDS", "DV"]
+# According to authors: Patient data that have been marked with non-missing values in the "C" columns have been removed from the analysis
 if "C" in data_complete.columns.values:
     data_complete = data_complete[data_complete.C.isnull()]
-data_complete = data_complete[data_complete.CYCL < 100]
-data_complete = data_complete[select_cols]
-data_complete = data_complete.rename(columns={"DV": "PK_timeCourse"})
+data_complete = data_complete[data_complete.CYCL < 100]  # cut off all dosing cycles greater than 100
+data_complete = data_complete[select_cols]  # filter down to columns of interest
+data_complete = data_complete.rename(
+    columns={"DV": "PK_timeCourse"}
+)  # DV is our variable of interest - anolyte concentration
 data_complete["PTNM"] = data_complete["PTNM"].astype("int").map("{:05d}".format)
-data_complete["ID"] = data_complete["STUD"].astype("int").astype("str") + data_complete["PTNM"]
+data_complete["ID"] = (
+    data_complete["STUD"].astype("int").astype("str") + data_complete["PTNM"]
+)  # concatenate study ID and patient ID for overall, unique ID
 
-time_summary = data_complete[["ID", "TIME"]].groupby("ID").max().reset_index()
+time_summary = (
+    data_complete[["ID", "TIME"]].groupby("ID").max().reset_index()
+)  # get max time since start of treatment per ID
+# only keep patients who have measurements past initial measurements (TIME == 0)
 selected_ptnms = time_summary[time_summary.TIME > 0].ID
 data_complete = data_complete[data_complete.ID.isin(selected_ptnms)]
 
-data_complete["AMT"] = data_complete["AMT"].fillna(0)
+data_complete["AMT"] = data_complete["AMT"].fillna(0)  # replace missing values for dosage with 0s
+
+# Set up round 1 measurement features.
+# Round 1 measurements for each ID are always used as input features for the neural network to predict measurements after round 1.
+# For weekly dosage IDs, round 1 is anything before end of week 1 (TIME <= 168), for every 3 week dosage IDs, anything before end of week 3 (TIME <= 604)
 data_complete["PK_round1"] = data_complete["PK_timeCourse"]
 data_complete.loc[(data_complete.DSFQ == 1) & (data_complete.TIME >= 168), "PK_round1"] = 0
 data_complete.loc[(data_complete.DSFQ == 3) & (data_complete.TIME >= 504), "PK_round1"] = 0
-data_complete["PK_round1"] = data_complete["PK_round1"].fillna(0)
-data_complete["PK_timeCourse"] = data_complete["PK_timeCourse"].fillna(-1)
 
-data_complete = data_complete[~((data_complete.AMT == 0) & (data_complete.TIME == 0))]
-data_complete.loc[data_complete[["PTNM", "TIME"]].duplicated(keep="last"), "AMT"] = data_complete.loc[
-    data_complete[["PTNM", "TIME"]].duplicated(keep="first"), "AMT"
+# Missing PK measurement value handling
+data_complete["PK_round1"] = data_complete["PK_round1"].fillna(0)  # round 1 missing values filled with 0
+data_complete["PK_timeCourse"] = data_complete["PK_timeCourse"].fillna(
+    -1
+)  # all others filled with -1, used to find missing values during training
+
+data_complete = data_complete[
+    ~((data_complete.AMT == 0) & (data_complete.TIME == 0))
+]  # drop all first patient rows with no dosage
+
+# Some rows are duplicate pairs for PTNM and TIME combinations
+# Set the first dosage amount of duplicated rows to the last dosage amount and keep only first row of duplicated rows
+# This implementation may be an issue if patient number (PTNM) repeats across multiple studies (STUD)
+data_complete.loc[
+    data_complete[["PTNM", "TIME"]].duplicated(keep="last"), "AMT"  # all non-last duplicated rows
+] = data_complete.loc[
+    data_complete[["PTNM", "TIME"]].duplicated(keep="first"), "AMT"  # all non-first duplicated rows
 ].values
 data = data_complete[~data_complete[["PTNM", "TIME"]].duplicated(keep="first")]
 
