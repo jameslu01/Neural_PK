@@ -1,6 +1,8 @@
 import os
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
+from sklearn.metrics import mean_squared_error, r2_score
 
 import torch
 import torch.nn as nn
@@ -44,11 +46,11 @@ def train_neural_ode(
     logger.info(input_cmd)
 
     batches_per_epoch = tdm1_obj["n_train_batches"]
-    criterion = nn.MSELoss().to(device=device)
+    criterion = nn.MSELoss().to(device=device)  # mean squared error loss
     params = list(encoder.parameters()) + list(ode_func.parameters()) + list(classifier.parameters())
-    optimizer = optim.Adam(params, lr=lr, weight_decay=l2)
-    best_rmse = 0x7FFFFFFF
-    best_epochs = 0
+    optimizer = optim.Adam(params, lr=lr, weight_decay=l2)  # most common neural network optimizer
+    best_rmse = 0x7FFFFFFF  # initialize the best rmse to a very large number
+    best_epochs = 0  # will be updated with the epoch number of the best rmse
 
     for epoch in range(1, epochs + 1):
 
@@ -101,6 +103,7 @@ def train_neural_ode(
                 ode_func,
                 classifier,
                 tol,
+                latent_dim,
                 tdm1_obj["train_dataloader"],
                 tdm1_obj["n_train_batches"],
                 device,
@@ -112,6 +115,7 @@ def train_neural_ode(
                 ode_func,
                 classifier,
                 tol,
+                latent_dim,
                 tdm1_obj["val_dataloader"],
                 tdm1_obj["n_val_batches"],
                 device,
@@ -139,3 +143,65 @@ def train_neural_ode(
                 epoch, train_loss, train_res["r2"], validation_loss, validation_res["r2"], best_rmse, best_epochs
             )
             logger.info(message)
+
+
+def load_model(ckpt_path, input_dim, hidden_dim, latent_dim, ode_hidden_dim, device="cpu"):
+    if not os.path.exists(ckpt_path):
+        raise Exception("Checkpoint " + ckpt_path + " does not exist.")
+
+    # create the parts of the model into which we load our checkpoint state
+    encoder = Encoder(input_dim=input_dim, output_dim=2 * latent_dim, hidden_dim=hidden_dim)
+    ode_func = ODEFunc(input_dim=latent_dim, hidden_dim=ode_hidden_dim)
+    classifier = Classifier(latent_dim=latent_dim, output_dim=1)
+
+    checkpt = torch.load(ckpt_path)
+
+    encoder_state = checkpt["encoder"]
+    encoder.load_state_dict(encoder_state)
+    encoder.to(device)
+
+    ode_state = checkpt["ode"]
+    ode_func.load_state_dict(ode_state)
+    ode_func.to(device)
+
+    classifier_state = checkpt["classifier"]
+    classifier.load_state_dict(classifier_state)
+    classifier.to(device)
+
+    return encoder, ode_func, classifier
+
+
+def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim, ode_hidden_dim):
+    # choose whether to use a GPU if it is available
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # the model checkpoints and evaluation results will be stored in these directories
+    ckpt_path = os.path.join(f"fold_{fold}", f"fold_{fold}_model_{model}.ckpt")
+    eval_path = os.path.join(f"fold_{fold}", f"fold_{fold}_model_{model}.csv")
+
+    # create the test data object
+    tdm1_obj = parse_tdm1(device, None, None, test, phase="test")
+    input_dim = tdm1_obj["input_dim"]
+
+    # load best trained model
+    encoder, ode_func, classifier = load_model(ckpt_path, input_dim, hidden_dim, latent_dim, ode_hidden_dim, device)
+
+    ## Predict & Evaluate
+    with torch.no_grad():
+        test_res = utils.compute_loss_on_test(
+            encoder,
+            ode_func,
+            classifier,
+            tol,
+            latent_dim,
+            tdm1_obj["test_dataloader"],
+            tdm1_obj["n_test_batches"],
+            device,
+            phase="test",
+        )
+
+    # save evaluation results to a csv
+    eval_results = pd.DataFrame(test_res).drop(columns="loss")
+    eval_results.to_csv(eval_path, index=False)
+
+    return eval_results
