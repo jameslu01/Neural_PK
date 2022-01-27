@@ -2,7 +2,6 @@ import os
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-from sklearn.metrics import mean_squared_error, r2_score
 
 import torch
 import torch.nn as nn
@@ -10,6 +9,7 @@ import torch.optim as optim
 from torchdiffeq import odeint_adjoint as odeint
 
 import utils
+from evaluation_utils import compute_loss_on_train, compute_loss_on_test
 from model import Encoder, ODEFunc, Classifier
 from data_parse import parse_tdm1
 
@@ -81,7 +81,7 @@ def train_neural_ode(
 
             preds = classifier(solves, cmax_time)
 
-            loss = utils.compute_loss_on_train(criterion, labels, preds)
+            loss = compute_loss_on_train(criterion, labels, preds)
             try:
                 loss.backward()
             except RuntimeError:
@@ -98,7 +98,7 @@ def train_neural_ode(
 
         with torch.no_grad():
 
-            train_res = utils.compute_loss_on_test(
+            train_res = compute_loss_on_test(
                 encoder,
                 ode_func,
                 classifier,
@@ -110,7 +110,7 @@ def train_neural_ode(
                 phase="train",
             )
 
-            validation_res = utils.compute_loss_on_test(
+            validation_res = compute_loss_on_test(
                 encoder,
                 ode_func,
                 classifier,
@@ -188,7 +188,7 @@ def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim, 
 
     ## Predict & Evaluate
     with torch.no_grad():
-        test_res = utils.compute_loss_on_test(
+        test_res = compute_loss_on_test(
             encoder,
             ode_func,
             classifier,

@@ -25,15 +25,15 @@ def augment_data(train):
     augment_data = pd.DataFrame(columns=train.columns)
     for ptnm in train.PTNM.unique():
         df = train[(train.PTNM == ptnm) & (train.TIME <= 2 * 21 * 24) & (train.TIME >= 0)]
-        df["PTNM"] = df["PTNM"] + ".1"
+        df.loc[:, "PTNM"] = df["PTNM"] + ".1"
         augment_data = pd.concat([augment_data, df], ignore_index=True)
 
         df = train[(train.PTNM == ptnm) & (train.TIME <= 3 * 21 * 24) & (train.TIME >= 0)]
-        df["PTNM"] = df["PTNM"] + ".2"
+        df.loc[:, "PTNM"] = df["PTNM"] + ".2"
         augment_data = pd.concat([augment_data, df], ignore_index=True)
 
         df = train[(train.PTNM == ptnm) & (train.TIME <= 4 * 21 * 24) & (train.TIME >= 0)]
-        df["PTNM"] = df["PTNM"] + ".3"
+        df.loc[:, "PTNM"] = df["PTNM"] + ".3"
         augment_data = pd.concat([augment_data, df], ignore_index=True)
 
     train = pd.concat([train, augment_data], ignore_index=True).reset_index(drop=True)

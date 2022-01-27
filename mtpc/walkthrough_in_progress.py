@@ -17,19 +17,37 @@ Note: evaluation.py is never called in run.sh but we will add it in properly.
 import pandas as pd
 from data_split import data_split, augment_data
 from train_predict_utils import train_neural_ode, predict_using_trained_model
+from evaluation_utils import merge_predictions
+from sklearn.metrics import r2_score, mean_squared_error
+from scipy.stats import pearsonr
 
 # general hyperparameters
 BASE_RANDOM_SEED = 1329
 TORCH_RANDOM_SEED = 1000  # they have different random seeds for splitting and for the neural network
 SPLIT_FRAC = 0.2
+OUTER_FOLDS = [1, 2, 3, 4, 5]  # indices of train/test splits
+MODEL_REPLICATES = [1, 2, 3, 4, 5]  # indices of model replicates for the ensemble of neural ODEs
 
 # hyperparemeters for the model, selected by grid search
-# TODO: describe what each one does
-# NOTE: the authors don't discuss how they chose these hyperparameters
-LR = 0.00005
+# note: the paper was not clear WHICH hyperparameters were selected by grid search
+LR = 0.00005  # this is the most important hyperparameter to tune
+L2 = 0.1  # weight decay is a form of regularization. should be tuned
+# ODE solver tolerance. From the Neural ODE paper:
+"""
+ODE solvers can approximately ensure that the output is within a given tolerance of the true solution. 
+The time spent by the forward call is proportional to the number of function evaluations, 
+so tuning the tolerance gives us a trade-off between accuracy and computational cost. 
+Our framework allows the user to trade off speed for precision, 
+but requires the user to choose an error tolerance on both the forward and reverse passes during training. 
+For sequence modeling, the default value of 1.5e-8 was used. In the classification and density estimation experiments, 
+we were able to reduce the tolerance to 1e-3 and 1e-5, respectively, without degrading performance.
+In short, tol is the tolerance for accepting/rejecting an adaptive step.
+"""
 TOL = 1e-4
+# number of epochs to train the model. the authors use early stopping so it's not crucial.
+# just needs to be large enough so the val loss eventually increases
 EPOCHS = 30
-L2 = 0.1
+# all of these together decide the size of the neural network
 HIDDEN_DIM = 128
 LATENT_DIM = 6
 HIDDEN_DIM = 128
@@ -108,8 +126,9 @@ that differ in: (a) initial conditions, (b) random seeds and (c) which subset of
 for actual model training vs validation. These 5 models are then averaged together to get the final model
 which is then applied to the test set.
 """
-for fold in [1, 2, 3, 4, 5]:
-    for model in [1, 2, 3, 4, 5]:
+eval_results_all = {}
+for fold in OUTER_FOLDS:
+    for model in MODEL_REPLICATES:
 
         # first we split up the data into training/validation/test
         train, test = data_split(data, "PTNM", seed=BASE_RANDOM_SEED + fold, test_size=SPLIT_FRAC)
@@ -165,7 +184,7 @@ for fold in [1, 2, 3, 4, 5]:
 
         # predict on test using the best model saved
         # during train_neural_ode
-        predict_using_trained_model(
+        eval_results = predict_using_trained_model(
             test,
             model,
             fold,
@@ -175,9 +194,36 @@ for fold in [1, 2, 3, 4, 5]:
             ODE_HIDDEN_DIM,
         )
 
-        # TODO(anyone):
-        # implement the evaluation from evaluation.py
-        # go through and see which utils are never used and delete them
-        # add a lot of documentation everywhere
-        # convert to jupyter notebook
-        # go back through emails and make sure we've answered all questions
+        eval_results_all[(fold, model)] = eval_results
+
+
+"""
+Now we can compute evaluation metrics and summarize them
+"""
+r2_scores = []
+mses = []
+pearsonrs = []
+for fold in OUTER_FOLDS:
+    # perform the ensembling
+    evals_per_fold = [eval_results_all[(fold, m)] for m in MODEL_REPLICATES]
+    predictions = merge_predictions(evals_per_fold, data)
+    # evaluate various metrics
+    y_true = predictions["labels"].values
+    y_pred = predictions["pred_agg"].values
+    r2_scores.append(mean_squared_error(y_true, y_pred, squared=False))
+    mses.append(r2_score(y_true, y_pred))
+    pearsonrs.append(pearsonr(y_true, y_pred)[0])
+
+
+df = pd.DataFrame({"R2": r2_scores, "MSE": mses, "Pearson R": pearsonrs})
+df.index = OUTER_FOLDS
+print(df)
+
+summary_df = df.agg(["min", "max", "mean", "median"])
+print(summary_df)
+
+# TODO(anyone):
+# go through and see which utils are never used and delete them
+# add a lot of documentation everywhere
+# convert to jupyter notebook
+# have a discussion of the 3 types of metrics as per Kei's request

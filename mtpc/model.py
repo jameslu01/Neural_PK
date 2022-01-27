@@ -1,6 +1,17 @@
 import torch
 import torch.nn as nn
-import utils
+
+
+def reverse(tensor):
+    idx = [i for i in range(tensor.size(0) - 1, -1, -1)]
+    return tensor[idx]
+
+
+def init_network_weights(net, std=0.1):
+    for m in net.modules():
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, mean=0, std=std)
+            nn.init.constant_(m.bias, val=0)
 
 
 class ODEFunc(nn.Module):
@@ -41,14 +52,14 @@ class Encoder(nn.Module):
             nn.ReLU(),
             nn.Linear(self.hidden_dim, self.output_dim),
         )
-        utils.init_network_weights(self.hiddens_to_output, std=0.001)
+        init_network_weights(self.hiddens_to_output, std=0.001)
 
         # self.rnn = nn.RNN(self.input_dim, self.hidden_dim, nonlinearity="relu").to(device)
         self.rnn = nn.GRU(self.input_dim, self.hidden_dim).to(device)
 
     def forward(self, data):
         data = data.permute(1, 0, 2)
-        data = utils.reverse(data)
+        data = reverse(data)
         output_rnn, _ = self.rnn(data)
         # print(output_rnn)
         outputs = self.hiddens_to_output(output_rnn[-1])
@@ -66,7 +77,7 @@ class Classifier(nn.Module):
             nn.Linear(32, output_dim),
         )
 
-        utils.init_network_weights(self.net, std=0.001)
+        init_network_weights(self.net, std=0.001)
 
     def forward(self, z, cmax_time):
         cmax_time = cmax_time.repeat(z.size(0), 1, 1)
