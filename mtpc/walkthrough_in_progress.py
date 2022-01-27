@@ -152,7 +152,6 @@ for fold in [1, 2, 3, 4, 5]:
             TORCH_RANDOM_SEED + model + fold,
             train,
             validate,
-            test,
             model,
             fold,
             LR,

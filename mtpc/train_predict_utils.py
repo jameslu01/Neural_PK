@@ -13,7 +13,7 @@ from data_parse import parse_tdm1
 
 
 def train_neural_ode(
-    random_seed, train, validate, test, model, fold, lr, tol, epochs, l2, hidden_dim, latent_dim, ode_hidden_dim
+    random_seed, train, validate, model, fold, lr, tol, epochs, l2, hidden_dim, latent_dim, ode_hidden_dim
 ):
     # choose whether to use a GPU if it is available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,7 +29,7 @@ def train_neural_ode(
     # for the logging we'll have this informative string
     input_cmd = f"--fold {fold} --model {model} --lr {lr} --tol {tol} --epochs {epochs} --l2 {l2} --hidden_dim {hidden_dim} --laten_dim {latent_dim}"
 
-    tdm1_obj = parse_tdm1(device, train, validate, test, phase="train")
+    tdm1_obj = parse_tdm1(device, train, validate, [], phase="train")
     input_dim = tdm1_obj["input_dim"]
 
     # put the model together
