@@ -98,7 +98,7 @@ def tdm1_collate_fn(batch, device):
 
 
 def parse_tdm1(device, train, validate, test, phase="train"):
-    """This function constructs the various"""
+    """This function constructs the dataset iterators that pytorch needs"""
     feature_cols = ["TFDS", "TIME", "CYCL", "AMT", "PK_round1"]
     label_col = "PK_timeCourse"
     if phase == "train":
