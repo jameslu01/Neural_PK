@@ -103,6 +103,7 @@ def train_neural_ode(
                 ode_func,
                 classifier,
                 tol,
+                latent_dim,
                 tdm1_obj["train_dataloader"],
                 tdm1_obj["n_train_batches"],
                 device,
@@ -114,6 +115,7 @@ def train_neural_ode(
                 ode_func,
                 classifier,
                 tol,
+                latent_dim,
                 tdm1_obj["val_dataloader"],
                 tdm1_obj["n_val_batches"],
                 device,
@@ -143,109 +145,33 @@ def train_neural_ode(
             logger.info(message)
 
 
-def load_model(ckpt_path, encoder=None, ode_func=None, classifier=None, device="cpu"):
+def load_model(ckpt_path, input_dim, hidden_dim, latent_dim, ode_hidden_dim, device="cpu"):
     if not os.path.exists(ckpt_path):
         raise Exception("Checkpoint " + ckpt_path + " does not exist.")
 
+    # create the parts of the model into which we load our checkpoint state
+    encoder = Encoder(input_dim=input_dim, output_dim=2 * latent_dim, hidden_dim=hidden_dim)
+    ode_func = ODEFunc(input_dim=latent_dim, hidden_dim=ode_hidden_dim)
+    classifier = Classifier(latent_dim=latent_dim, output_dim=1)
+
     checkpt = torch.load(ckpt_path)
-    if encoder is not None:
-        encoder_state = checkpt["encoder"]
-        encoder.load_state_dict(encoder_state)
-        encoder.to(device)
 
-    if ode_func is not None:
-        ode_state = checkpt["ode"]
-        ode_func.load_state_dict(ode_state)
-        ode_func.to(device)
+    encoder_state = checkpt["encoder"]
+    encoder.load_state_dict(encoder_state)
+    encoder.to(device)
 
-    if classifier is not None:
-        classifier_state = checkpt["classifier"]
-        classifier.load_state_dict(classifier_state)
-        classifier.to(device)
+    ode_state = checkpt["ode"]
+    ode_func.load_state_dict(ode_state)
+    ode_func.to(device)
 
+    classifier_state = checkpt["classifier"]
+    classifier.load_state_dict(classifier_state)
+    classifier.to(device)
 
-def get_device(tensor):
-    device = torch.device("cpu")
-    if tensor.is_cuda:
-        device = tensor.get_device()
-    return device
+    return encoder, ode_func, classifier
 
 
-def sample_standard_gaussian(mu, sigma):
-    device = get_device(mu)
-    d = torch.distributions.normal.Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.0]).to(device))
-    r = d.sample(mu.size()).squeeze(-1)
-    return r * sigma.float() + mu.float()
-
-
-def compute_loss_on_test(encoder, ode_func, classifier, tol, latent_dim, dataloader, n_batches, device, phase):
-    ptnms = []
-    Times = torch.Tensor([]).to(device=device)
-    predictions = torch.Tensor([]).to(device=device)
-    ground_truth = torch.Tensor([]).to(device=device)
-
-    for itr in range(n_batches):
-        ptnm, times, features, labels, cmax_time = dataloader.__next__()
-        dosing = torch.zeros([features.size(0), features.size(1), latent_dim])
-        dosing[:, :, 0] = features[:, :, -2]
-        dosing = dosing.permute(1, 0, 2)
-
-        encoder_out = encoder(features)
-        qz0_mean, qz0_var = encoder_out[:, :latent_dim], encoder_out[:, latent_dim:]
-        z0 = sample_standard_gaussian(qz0_mean, qz0_var)
-
-        solves = z0.unsqueeze(0).clone()
-        try:
-            for idx, (time0, time1) in enumerate(zip(times[:-1], times[1:])):
-                z0 += dosing[idx]
-                time_interval = torch.Tensor([time0 - time0, time1 - time0])
-                sol = odeint(ode_func, z0, time_interval, rtol=tol, atol=tol)
-                z0 = sol[-1].clone()
-                solves = torch.cat([solves, sol[-1:, :]], 0)
-        except AssertionError:
-            print(times)
-            print(time0, time1, time_interval, ptnm)
-            continue
-
-        preds = classifier(solves, cmax_time).permute(1, 0, 2)
-
-        if phase == "test":
-            idx_not_nan = ~(torch.isnan(labels) | (labels == -1))
-            preds = preds[idx_not_nan]
-            labels = labels[idx_not_nan]
-
-            times = times[idx_not_nan.flatten()]
-            ptnms += ptnm * len(times)
-            Times = torch.cat((Times, times * 24))
-
-            predictions = torch.cat((predictions, preds))
-            ground_truth = torch.cat((ground_truth, labels))
-
-        else:
-            idx_not_nan = ~(torch.isnan(labels) | (labels == -1))
-            preds = preds[idx_not_nan]
-            labels = labels[idx_not_nan]
-
-            predictions = torch.cat((predictions, preds))
-            ground_truth = torch.cat((ground_truth, labels))
-
-    rmse_loss = mean_squared_error(ground_truth.cpu().numpy(), predictions.cpu().numpy(), squared=False)
-    r2 = r2_score(ground_truth.cpu().numpy(), predictions.cpu().numpy())
-
-    if phase == "test":
-        return {
-            "PTNM": ptnms,
-            "TIME": Times,
-            "labels": ground_truth.cpu().tolist(),
-            "preds": predictions.cpu().tolist(),
-            "loss": rmse_loss,
-            "r2": r2,
-        }
-    else:
-        return {"labels": ground_truth.cpu().tolist(), "preds": predictions.cpu().tolist(), "loss": rmse_loss, "r2": r2}
-
-
-def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim):
+def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim, ode_hidden_dim):
     # choose whether to use a GPU if it is available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -257,17 +183,12 @@ def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim):
     tdm1_obj = parse_tdm1(device, None, None, test, phase="test")
     input_dim = tdm1_obj["input_dim"]
 
-    # create the parts of the model into which we load our checkpoint state
-    encoder = Encoder(input_dim=input_dim, output_dim=2 * latent_dim, hidden_dim=hidden_dim)
-    ode_func = ODEFunc(input_dim=latent_dim, hidden_dim=16)
-    classifier = Classifier(latent_dim=latent_dim, output_dim=1)
-
     # load best trained model
-    load_model(ckpt_path, encoder, ode_func, classifier, device)
+    encoder, ode_func, classifier = load_model(ckpt_path, input_dim, hidden_dim, latent_dim, ode_hidden_dim, device)
 
     ## Predict & Evaluate
     with torch.no_grad():
-        test_res = compute_loss_on_test(
+        test_res = utils.compute_loss_on_test(
             encoder,
             ode_func,
             classifier,

@@ -16,7 +16,7 @@ Note: evaluation.py is never called in run.sh but we will add it in properly.
 
 import pandas as pd
 from data_split import data_split, augment_data
-from train_predict_utils import train_neural_ode
+from train_predict_utils import train_neural_ode, predict_using_trained_model
 
 # general hyperparameters
 BASE_RANDOM_SEED = 1329
@@ -164,9 +164,19 @@ for fold in [1, 2, 3, 4, 5]:
             ODE_HIDDEN_DIM,
         )
 
+        # predict on test using the best model saved
+        # during train_neural_ode
+        predict_using_trained_model(
+            test,
+            model,
+            fold,
+            TOL,
+            HIDDEN_DIM,
+            LATENT_DIM,
+            ODE_HIDDEN_DIM,
+        )
+
         # TODO(anyone):
-        # implement the next command:
-        # CUDA_VISIBLE_DEVICES="" python run_predict.py --fold $fold --model $model --save fold_$fold --tol 1e-4
         # implement the evaluation from evaluation.py
         # go through and see which utils are never used and delete them
         # add a lot of documentation everywhere
