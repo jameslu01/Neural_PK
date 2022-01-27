@@ -29,7 +29,7 @@ def train_neural_ode(
     # for the logging we'll have this informative string
     input_cmd = f"--fold {fold} --model {model} --lr {lr} --tol {tol} --epochs {epochs} --l2 {l2} --hidden_dim {hidden_dim} --laten_dim {latent_dim}"
 
-    tdm1_obj = parse_tdm1(device, train, validate, [], phase="train")
+    tdm1_obj = parse_tdm1(device, train, validate, None, phase="train")
     input_dim = tdm1_obj["input_dim"]
 
     # put the model together
