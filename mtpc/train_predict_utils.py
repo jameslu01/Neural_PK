@@ -46,11 +46,11 @@ def train_neural_ode(
     logger.info(input_cmd)
 
     batches_per_epoch = tdm1_obj["n_train_batches"]
-    criterion = nn.MSELoss().to(device=device)
+    criterion = nn.MSELoss().to(device=device)  # mean squared error loss
     params = list(encoder.parameters()) + list(ode_func.parameters()) + list(classifier.parameters())
-    optimizer = optim.Adam(params, lr=lr, weight_decay=l2)
-    best_rmse = 0x7FFFFFFF
-    best_epochs = 0
+    optimizer = optim.Adam(params, lr=lr, weight_decay=l2)  # most common neural network optimizer
+    best_rmse = 0x7FFFFFFF  # initialize the best rmse to a very large number
+    best_epochs = 0  # will be updated with the epoch number of the best rmse
 
     for epoch in range(1, epochs + 1):
 
