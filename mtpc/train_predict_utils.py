@@ -203,3 +203,5 @@ def predict_using_trained_model(test, model, fold, tol, hidden_dim, latent_dim, 
     # save evaluation results to a csv
     eval_results = pd.DataFrame(test_res).drop(columns="loss")
     eval_results.to_csv(eval_path, index=False)
+
+    return eval_results

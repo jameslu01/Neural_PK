@@ -114,7 +114,7 @@ def compute_loss_on_test(encoder, ode_func, classifier, tol, latent_dim, dataloa
 
         encoder_out = encoder(features)
         qz0_mean, qz0_var = encoder_out[:, :latent_dim], encoder_out[:, latent_dim:]
-        z0 = utils.sample_standard_gaussian(qz0_mean, qz0_var)
+        z0 = sample_standard_gaussian(qz0_mean, qz0_var)
 
         solves = z0.unsqueeze(0).clone()
         try:
