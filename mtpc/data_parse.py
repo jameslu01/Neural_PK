@@ -5,13 +5,20 @@ import numpy as np
 
 
 class TDM1(Dataset):
-    def __init__(self, data, label_col, feature_cols, device, phase="train"):
+    """A class that processes data of the type used in this paper.
+
+    From the paper: "This study utilized clinical PK data from
+    trastuzumab emtansine (T-DM1), a conjugated monoclonal antibody
+    drug that has been approved for the treatment of patients
+    with human epidermal growth factor receptor 2 (HER2)
+    positive breast cancers (Boyraz et al., 2013).
+    """
+
+    def __init__(self, data, label_col, feature_cols):
         self.data = data
 
         self.label_col = label_col
         self.features = feature_cols
-        self.device = device
-        self.phase = phase
         self.data["TIME"] = self.data["TIME"] / 24
 
     def __len__(self):
@@ -25,20 +32,18 @@ class TDM1(Dataset):
 
     def process(self, data):
         data = data.reset_index(drop=True)
-        """
-        if self.phase == "train":
-            random_time = np.random.randint(low=21, high=int(data["TIME"].max()) + 1)
-            data = data[data.TIME <= random_time]
-        else:
-            pass
-        """
-        if (data.DSFQ == 1).all():
+
+        if (data.DSFQ == 1).all():  # 1 week
             cmax_time = data.loc[data.TIME < 7, ["TIME", "PK_timeCourse"]].values.flatten()
             cmax = data.loc[data.TIME < 7, "PK_timeCourse"].max()
-        else:
+        else:  # 3 weeks
             cmax_time = data.loc[data.TIME < 21, ["TIME", "PK_timeCourse"]].values.flatten()
             cmax = data.loc[data.TIME < 21, "PK_timeCourse"].max()
 
+        # from the paper:
+        # "We iterated TIME and PK values from the first time point
+        # to the last time point during the first cycle, and padded
+        # the vector to 20 elements long with zeros"
         cmax_time_full = np.zeros((20,))
         if len(cmax_time) <= 20:
             cmax_time_full[: len(cmax_time)] = cmax_time
@@ -93,16 +98,14 @@ def tdm1_collate_fn(batch, device):
 
 
 def parse_tdm1(device, train, validate, test, phase="train"):
+    """This function constructs the dataset iterators that pytorch needs"""
     feature_cols = ["TFDS", "TIME", "CYCL", "AMT", "PK_round1"]
     label_col = "PK_timeCourse"
-    train = TDM1(train, label_col, feature_cols, device, phase="train")
-    validate = TDM1(validate, label_col, feature_cols, device, phase="validate")
-    test = TDM1(test, label_col, feature_cols, device, phase="test")
-
-    ptnm, times, features, labels, cmax_time = train[0]
-    input_dim = features.size(-1)
-
     if phase == "train":
+        train = TDM1(train, label_col, feature_cols)
+        validate = TDM1(validate, label_col, feature_cols)
+        ptnm, times, features, labels, cmax_time = train[0]
+
         train_dataloader = DataLoader(
             train, batch_size=1, shuffle=True, collate_fn=lambda batch: tdm1_collate_fn(batch, device)
         )
@@ -115,10 +118,12 @@ def parse_tdm1(device, train, validate, test, phase="train"):
             "val_dataloader": utils.inf_generator(val_dataloader),
             "n_train_batches": len(train_dataloader),
             "n_val_batches": len(val_dataloader),
-            "input_dim": input_dim,
+            "input_dim": features.size(-1),
         }
 
     else:
+        test = TDM1(test, label_col, feature_cols)
+        ptnm, times, features, labels, cmax_time = test[0]
         test_dataloader = DataLoader(
             test, batch_size=1, shuffle=False, collate_fn=lambda batch: tdm1_collate_fn(batch, device)
         )
@@ -126,7 +131,7 @@ def parse_tdm1(device, train, validate, test, phase="train"):
         dataset_objs = {
             "test_dataloader": utils.inf_generator(test_dataloader),
             "n_test_batches": len(test_dataloader),
-            "input_dim": input_dim,
+            "input_dim": features.size(-1),
         }
 
     return dataset_objs
